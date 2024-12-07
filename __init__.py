@@ -133,7 +133,7 @@ class NoiseTransformer(nn.Module):
 
 
 class NPNet(nn.Module):
-    def __init__(self, model_id, pretrained_path=True, device="cuda") -> None:
+    def __init__(self, model_id, pretrained_path, device="cuda") -> None:
         super().__init__()
 
         assert model_id in ["SDXL", "DreamShaper", "DiT"]
@@ -189,6 +189,7 @@ class NPNetGoldenNoise:
                 "prompt": ("CONDITIONING",),
                 "model_path": ("STRING", {"default": "/path/to/sdxl.pth"}),
                 "model_type": (["SDXL", "DreamShaper", "DiT"],),
+                "device": (["cuda", "cpu"],)
             }
         }
 
@@ -220,10 +221,11 @@ class NPNetGoldenNoise:
         print("NPNet ran ok")
         return r
 
-    def doit(self, noise, prompt, model_path, model_type):
+    def doit(self, noise, prompt, model_path, model_type, device):
         if self.npnet is None:
             print("Loading NPNet")
-            self.npnet = NPNet(model_type, model_path)
+            self.npnet = NPNet(model_type, model_path, device=device)
+        self.npnet.to(device)
         self.noise = noise
         self.cond = prompt[0]
 
