@@ -217,9 +217,11 @@ class NPNetGoldenNoise:
             input_latent = input_latent.copy()
             print("Latent must be 128x128 for the NPNet model to work; generating square noise and reshaping...")
             input_latent["samples"] = common_upscale(input_latent["samples"], 128, 128, "nearest-exact", "disabled")
-        init_noise = self.noise.generate_noise(input_latent).to("cuda")
-        cond = self.cond[0].clone().to("cuda")
-        self.npnet.to("cuda")
+        init_noise = self.noise.generate_noise(input_latent).to(self.npnet.device)
+        cond = self.cond[0].clone().to(self.npnet.device)
+        if cond.shape[1] != 77:
+            print("NPNet can't handle conds >77 tokens, truncating...")
+            cond = cond[:, :77, :]
         try:
             print("Applying NPNet to noise")
             r = self.npnet(init_noise, cond).to("cpu")
