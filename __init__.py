@@ -7,26 +7,29 @@ import einops
 from diffusers.models.normalization import AdaGroupNorm
 
 from timm.layers import use_fused_attn
-from timm.models.layers import PatchEmbed, Mlp, DropPath, trunc_normal_, lecun_normal_, get_act_layer
+
+
+from comfy.utils import common_upscale
+
 
 class Attention(nn.Module):
     fused_attn = True
 
     def __init__(
-            self,
-            dim: int,
-            num_heads: int = 8,
-            qkv_bias: bool = False,
-            qk_norm: bool = False,
-            attn_drop: float = 0.,
-            proj_drop: float = 0.,
-            norm_layer: nn.Module = nn.LayerNorm,
+        self,
+        dim: int,
+        num_heads: int = 8,
+        qkv_bias: bool = False,
+        qk_norm: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        norm_layer: nn.Module = nn.LayerNorm,
     ) -> None:
         super().__init__()
-        assert dim % num_heads == 0, 'dim should be divisible by num_heads'
+        assert dim % num_heads == 0, "dim should be divisible by num_heads"
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
         self.fused_attn = use_fused_attn()
 
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
@@ -44,8 +47,10 @@ class Attention(nn.Module):
 
         if self.fused_attn:
             x = F.scaled_dot_product_attention(
-                q, k, v,
-                dropout_p=self.attn_drop.p if self.training else 0.,
+                q,
+                k,
+                v,
+                dropout_p=self.attn_drop.p if self.training else 0.0,
             )
         else:
             q = q * self.scale
@@ -61,7 +66,7 @@ class Attention(nn.Module):
 
 
 class SVDNoiseUnet(nn.Module):
-    def __init__(self, in_channels=4, out_channels=4, resolution=128): # resolution = size // 8
+    def __init__(self, in_channels=4, out_channels=4, resolution=128):  # resolution = size // 8
         super(SVDNoiseUnet, self).__init__()
 
         _in = int(resolution * in_channels // 2)
@@ -85,7 +90,7 @@ class SVDNoiseUnet(nn.Module):
 
         self.bn = nn.BatchNorm2d(_out)
 
-        self.mlp4 =  nn.Sequential(
+        self.mlp4 = nn.Sequential(
             nn.Linear(_out, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, _out),
@@ -93,15 +98,15 @@ class SVDNoiseUnet(nn.Module):
 
     def forward(self, x, residual=False):
         b, c, h, w = x.shape
-        x = einops.rearrange(x, "b (a c)h w ->b (a h)(c w)", a=2,c=2) # x -> [1, 256, 256]
-        U, s, V = torch.linalg.svd(x) # U->[b 256 256], s-> [b 256], V->[b 256 256]
+        x = einops.rearrange(x, "b (a c)h w ->b (a h)(c w)", a=2, c=2)  # x -> [1, 256, 256]
+        U, s, V = torch.linalg.svd(x)  # U->[b 256 256], s-> [b 256], V->[b 256 256]
         U_T = U.permute(0, 2, 1)
-        out = self.mlp1(U_T) + self.mlp2(V) + self.mlp3(s).unsqueeze(1) # s -> [b, 1, 256]  => [b, 256, 256]
+        out = self.mlp1(U_T) + self.mlp2(V) + self.mlp3(s).unsqueeze(1)  # s -> [b, 1, 256]  => [b, 256, 256]
         out = self.attention(out).mean(1)
         out = self.mlp4(out) + s
         pred = U @ torch.diag_embed(out) @ V
-        return einops.rearrange(pred, "b (a h)(c w) -> b (a c) h w", a=2,c=2)
-    
+        return einops.rearrange(pred, "b (a h)(c w) -> b (a c) h w", a=2, c=2)
+
 
 class SVDNoiseUnet_Concise(nn.Module):
     def __init__(self, in_channels=4, out_channels=4, resolution=128):
@@ -111,13 +116,12 @@ class SVDNoiseUnet_Concise(nn.Module):
 class NoiseTransformer(nn.Module):
     def __init__(self, resolution=128):
         super().__init__()
-        self.upsample = lambda x: F.interpolate(x, [224,224])
-        self.downsample = lambda x: F.interpolate(x, [resolution,resolution])
-        self.upconv = nn.Conv2d(7,4,(1,1),(1,1),(0,0))
-        self.downconv = nn.Conv2d(4,3,(1,1),(1,1),(0,0))
+        self.upsample = lambda x: F.interpolate(x, [224, 224])
+        self.downsample = lambda x: F.interpolate(x, [resolution, resolution])
+        self.upconv = nn.Conv2d(7, 4, (1, 1), (1, 1), (0, 0))
+        self.downconv = nn.Conv2d(4, 3, (1, 1), (1, 1), (0, 0))
         # self.upconv = nn.Conv2d(7,4,(1,1),(1,1),(0,0))
-        self.swin = create_model("swin_tiny_patch4_window7_224",pretrained=True)
-
+        self.swin = create_model("swin_tiny_patch4_window7_224", pretrained=True)
 
     def forward(self, x, residual=False):
         if residual:
@@ -127,78 +131,76 @@ class NoiseTransformer(nn.Module):
 
         return x
 
+
 class NPNet(nn.Module):
-      def __init__(self, model_id, pretrained_path=True, device='cuda') -> None:
-            super(NPNet, self).__init__()
+    def __init__(self, model_id, pretrained_path=True, device="cuda") -> None:
+        super(NPNet, self).__init__()
 
-            assert model_id in ['SDXL', 'DreamShaper', 'DiT']
+        assert model_id in ["SDXL", "DreamShaper", "DiT"]
 
-            self.model_id = model_id
-            self.device = device
-            self.pretrained_path = pretrained_path
+        self.model_id = model_id
+        self.device = device
+        self.pretrained_path = pretrained_path
 
-            (
-                  self.unet_svd, 
-                  self.unet_embedding, 
-                  self.text_embedding, 
-                  self._alpha, 
-                  self._beta
-             ) = self.get_model()
+        (self.unet_svd, self.unet_embedding, self.text_embedding, self._alpha, self._beta) = self.get_model()
 
-      def get_model(self):
+    def get_model(self):
 
-            unet_embedding = NoiseTransformer(resolution=128).to(self.device).to(torch.float32)
-            unet_svd = SVDNoiseUnet(resolution=128).to(self.device).to(torch.float32)
+        unet_embedding = NoiseTransformer(resolution=128).to(self.device).to(torch.float32)
+        unet_svd = SVDNoiseUnet(resolution=128).to(self.device).to(torch.float32)
 
-            if self.model_id == 'DiT':
-                  text_embedding = AdaGroupNorm(1024 * 77, 4, 1, eps=1e-6).to(self.device).to(torch.float32)
-            else:
-                  text_embedding = AdaGroupNorm(2048 * 77, 4, 1, eps=1e-6).to(self.device).to(torch.float32) 
+        if self.model_id == "DiT":
+            text_embedding = AdaGroupNorm(1024 * 77, 4, 1, eps=1e-6).to(self.device).to(torch.float32)
+        else:
+            text_embedding = AdaGroupNorm(2048 * 77, 4, 1, eps=1e-6).to(self.device).to(torch.float32)
 
-            
-            if '.pth' in self.pretrained_path:
-                  gloden_unet = torch.load(self.pretrained_path)
-                  unet_svd.load_state_dict(gloden_unet["unet_svd"])
-                  unet_embedding.load_state_dict(gloden_unet["unet_embedding"])
-                  text_embedding.load_state_dict(gloden_unet["embeeding"])
-                  _alpha = gloden_unet["alpha"]
-                  _beta = gloden_unet["beta"]
+        if ".pth" in self.pretrained_path:
+            gloden_unet = torch.load(self.pretrained_path)
+            unet_svd.load_state_dict(gloden_unet["unet_svd"])
+            unet_embedding.load_state_dict(gloden_unet["unet_embedding"])
+            text_embedding.load_state_dict(gloden_unet["embeeding"])
+            _alpha = gloden_unet["alpha"]
+            _beta = gloden_unet["beta"]
 
-                  print("Load Successfully!")
+            print("Load Successfully!")
 
-                  return unet_svd, unet_embedding, text_embedding, _alpha, _beta
-            
-            else:
-                  assert ("No Pretrained Weights Found!")
-            
+            return unet_svd, unet_embedding, text_embedding, _alpha, _beta
 
-      def forward(self, initial_noise, prompt_embeds):
+        else:
+            assert "No Pretrained Weights Found!"
 
-            prompt_embeds = prompt_embeds.float().view(prompt_embeds.shape[0], -1)
-            text_emb = self.text_embedding(initial_noise.float(), prompt_embeds)
+    def forward(self, initial_noise, prompt_embeds):
 
-            encoder_hidden_states_svd = initial_noise
-            encoder_hidden_states_embedding = initial_noise + text_emb
+        prompt_embeds = prompt_embeds.float().view(prompt_embeds.shape[0], -1)
+        text_emb = self.text_embedding(initial_noise.float(), prompt_embeds)
 
-            golden_embedding = self.unet_embedding(encoder_hidden_states_embedding.float())
+        encoder_hidden_states_svd = initial_noise
+        encoder_hidden_states_embedding = initial_noise + text_emb
 
-            golden_noise = self.unet_svd(encoder_hidden_states_svd.float()) + (
-                        2 * torch.sigmoid(self._alpha) - 1) * text_emb + self._beta * golden_embedding
+        golden_embedding = self.unet_embedding(encoder_hidden_states_embedding.float())
 
-            return golden_noise
+        golden_noise = (
+            self.unet_svd(encoder_hidden_states_svd.float())
+            + (2 * torch.sigmoid(self._alpha) - 1) * text_emb
+            + self._beta * golden_embedding
+        )
+
+        return golden_noise
+
 
 class NPNetGoldenNoise:
     npnet = None
     noise = None
     cond = None
     seed = None
+
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "noise": ("NOISE",),
                 "prompt": ("CONDITIONING",),
-                "model_path": ("STRING",{"default": "/path/to/sdxl.pth"}),
+                "model_path": ("STRING", {"default": "/path/to/sdxl.pth"}),
                 "model_type": (["SDXL", "DreamShaper", "DiT"],),
             }
         }
@@ -210,18 +212,24 @@ class NPNetGoldenNoise:
 
     def generate_noise(self, input_latent):
         self.seed = self.noise.seed
-        init_noise = self.noise.generate_noise(input_latent).to('cuda')
-        cond = self.cond[0].clone().to('cuda')
-        self.npnet.to('cuda')
+        orig_shape = input_latent["samples"].shape
+        if orig_shape[-2] != 128 or orig_shape[-1] != 128:
+            input_latent = input_latent.copy()
+            print("Latent must be 128x128 for the NPNet model to work; generating square noise and reshaping...")
+            input_latent["samples"] = common_upscale(input_latent["samples"], 128, 128, "nearest-exact", "disabled")
+        init_noise = self.noise.generate_noise(input_latent).to("cuda")
+        cond = self.cond[0].clone().to("cuda")
+        self.npnet.to("cuda")
         try:
             print("Applying NPNet to noise")
-            r = self.npnet(init_noise, cond)
+            r = self.npnet(init_noise, cond).to("cpu")
+            if orig_shape[-2] != 128 or orig_shape[-1] != 128:
+                r = common_upscale(r, orig_shape[-1], orig_shape[-2], "nearest-exact", "disabled")
         except Exception as e:
-            print("Running NPNet failed with error (non-square latent can cause shape errors):", e)
-            print("Returning unmodified noise")
+            print("Running NPNet failed with error, returning unmodified noise:", e)
             return init_noise
         print("NPNet ran ok")
-        return r.to("cpu")
+        return r
 
     def doit(self, noise, prompt, model_path, model_type):
         if self.npnet is None:
@@ -231,8 +239,6 @@ class NPNetGoldenNoise:
         self.cond = prompt[0]
 
         return (self,)
-
-
 
 
 NODE_CLASS_MAPPINGS = {"NPNetGoldenNoise": NPNetGoldenNoise}
