@@ -209,7 +209,7 @@ class NPNetGoldenNoise:
     FUNCTION = "doit"
 
     def generate_noise(self, input_latent):
-        seed = self.noise.seed
+        self.seed = self.noise.seed
         init_noise = self.noise.generate_noise(input_latent).to('cuda')
         cond = self.cond[0].clone().to('cuda')
         self.npnet.to('cuda')
