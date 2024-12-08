@@ -134,33 +134,43 @@ class NoiseTransformer(nn.Module):
 
 
 class NPNet(nn.Module):
-    def __init__(self, model_id, pretrained_path, device="cuda") -> None:
+    def __init__(self, pretrained_path, device="cuda") -> None:
         super().__init__()
 
-        assert model_id in ["SDXL", "DreamShaper", "DiT"]
         self.device = device
-        self.model_id = model_id
         self.pretrained_path = pretrained_path
         self.unet_embedding = NoiseTransformer(resolution=128)
         self.unet_svd = SVDNoiseUnet(resolution=128)
         self.alpha = torch.nn.Parameter(torch.empty(1))
         self.beta = torch.nn.Parameter(torch.empty(1))
-        if self.model_id == "DiT":
-            self.text_embedding = AdaGroupNorm(1024 * 77, 4, 1, eps=1e-6)
-        else:
-            self.text_embedding = AdaGroupNorm(2048 * 77, 4, 1, eps=1e-6)
+
         if ".pth" in pretrained_path:
             sd = torch.load(self.pretrained_path, weights_only=True, map_location=device)
-            self.unet_embedding.load_state_dict(sd.pop("unet_embedding"))
-            self.unet_svd.load_state_dict(sd.pop("unet_svd"))
-            self.text_embedding.load_state_dict(sd.pop("embeeding"))
-            self.alpha = torch.nn.Parameter(sd["alpha"])
-            self.beta = torch.nn.Parameter(sd["beta"])
         else:
             sd = safetensors.torch.load_file(self.pretrained_path)
-            # safetensors-converted weights with fixed keys
-            self.load_state_dict(sd)
+
+        if "embeeding" in sd:
+            # fix key format
+            self._convert(sd)
+
+        te_shape = sd["text_embedding.linear.weight"].shape[1]
+        if te_shape == 77 * 1024:
+            print("Model looks like NPNet DiT")
+        elif te_shape == 77 * 2048:
+            print("Model looks like NPNet SDXL or DreamShaper")
+        else:
+            print("Unrecognized TE shape:", te_shape, te_shape // 77)
+        self.text_embedding = AdaGroupNorm(te_shape, 4, 1, eps=1e-6)
+        self.load_state_dict(sd)
         self.to(dtype=torch.float32, device=device)
+
+    def _convert(self, sd):
+        for k in "unet_embedding", "unet_svd", "embeeding":
+            subdict = sd.pop(k)
+            if k == "embeeding":
+                k = "text_embedding"
+            for sk in subdict:
+                sd[f"{k}.{sk}"] = subdict[sk]
 
     def to(self, *args, **kwargs):
         super().to(*args, **kwargs)
@@ -198,13 +208,12 @@ class NPNetGoldenNoise:
                 "noise": ("NOISE",),
                 "prompt": ("CONDITIONING",),
                 "model_path": ("STRING", {"default": "/path/to/sdxl.pth"}),
-                "model_type": (["SDXL", "DreamShaper", "DiT"],),
                 "device": (["cuda", "cpu"],),
             }
         }
 
     RETURN_TYPES = ("NOISE",)
-    CATEGORY = "_for_testing/golden_noise"
+    CATEGORY = "latent/noise"
 
     FUNCTION = "doit"
 
@@ -226,10 +235,10 @@ class NPNetGoldenNoise:
             r = common_upscale(r, orig_shape[-1], orig_shape[-2], "nearest-exact", "disabled")
         return r
 
-    def doit(self, noise, prompt, model_path, model_type, device):
+    def doit(self, noise, prompt, model_path, device):
         if self.npnet is None or self.npnet.pretrained_path != model_path:
             print("Loading NPNet from", model_path)
-            self.npnet = NPNet(model_type, model_path, device=device)
+            self.npnet = NPNet(model_path, device=device)
         self.npnet.to(device)
         self.noise = noise
         self.cond = prompt[0]
