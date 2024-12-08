@@ -14,3 +14,5 @@ You can also run it on the CPU, though appears to change the output for some rea
 The model works with 128x128 latents, apparently. If you pass in other shaped latents, it will reshape the noise into a square before running the noise model, and then reshape the result back to the original resolution.
 
 If you get an error from the timm module when running this, update your timm package. It may be too old.
+
+You can use `convert_to_safetensors.py` to convert the pre-trained models into safetensors files (with fixed keys)
