@@ -3,7 +3,11 @@
 A very barebones mostly-copypaste implementation of https://github.com/xie-lab-ml/Golden-Noise-for-Diffusion-Models
 
 ## Requirements
-You need the pre-trained weights for your model from https://drive.google.com/drive/folders/1Z0wg4HADhpgrztyT3eWijPbJJN5Y2jQt?usp=drive_link
+You need the pre-trained weights for your model.
+
+You can find safetensors-converted weights at https://huggingface.co/asagi4/NPNet
+
+The original pickle-format checkpoints are found at https://drive.google.com/drive/folders/1Z0wg4HADhpgrztyT3eWijPbJJN5Y2jQt?usp=drive_link
 
 ## Usage
 Use with custom sampling and pass in an initial noise from eg. `RandomNoise` and a cond (only the first prompt in the conditioning will be used if multiple exist).
