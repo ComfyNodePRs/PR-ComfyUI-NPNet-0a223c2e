@@ -9,8 +9,10 @@ from diffusers.models.normalization import AdaGroupNorm
 
 from timm.layers import use_fused_attn
 
-
 from comfy.utils import common_upscale
+
+import folder_paths
+import os.path
 
 
 class Attention(nn.Module):
@@ -203,11 +205,17 @@ class NPNetGoldenNoise:
 
     @classmethod
     def INPUT_TYPES(s):
+        if "npnet" not in folder_paths.folder_names_and_paths:
+            folder_paths.folder_names_and_paths["npnet"] = (
+                [os.path.join(folder_paths.models_dir, "npnet")],
+                {".pth", ".safetensors"},
+            )
+
         return {
             "required": {
                 "noise": ("NOISE",),
                 "prompt": ("CONDITIONING",),
-                "model_path": ("STRING", {"default": "/path/to/sdxl.pth"}),
+                "model": (folder_paths.get_filename_list("npnet"),),
                 "device": (["cuda", "cpu"],),
             }
         }
@@ -235,7 +243,8 @@ class NPNetGoldenNoise:
             r = common_upscale(r, orig_shape[-1], orig_shape[-2], "nearest-exact", "disabled")
         return r
 
-    def doit(self, noise, prompt, model_path, device):
+    def doit(self, noise, prompt, model, device):
+        model_path = folder_paths.get_full_path("npnet", model)
         if self.npnet is None or self.npnet.pretrained_path != model_path:
             print("Loading NPNet from", model_path)
             self.npnet = NPNet(model_path, device=device)

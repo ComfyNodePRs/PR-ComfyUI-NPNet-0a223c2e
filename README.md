@@ -3,7 +3,7 @@
 A very barebones mostly-copypaste implementation of https://github.com/xie-lab-ml/Golden-Noise-for-Diffusion-Models
 
 ## Requirements
-You need the pre-trained weights for your model.
+You need the pre-trained weights for your model. Download and place them under `models/npnet` in your ComfyUI folder, or add an extra path in `extra_model_paths.yaml` for the `npnet` type.
 
 You can find safetensors-converted weights at https://huggingface.co/asagi4/NPNet
 
