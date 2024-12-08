@@ -202,6 +202,8 @@ class NPNetGoldenNoise:
     noise = None
     cond = None
     seed = None
+    method = "nearest-exact"
+    strategy = "resize"
 
     @classmethod
     def INPUT_TYPES(s):
@@ -217,7 +219,11 @@ class NPNetGoldenNoise:
                 "prompt": ("CONDITIONING",),
                 "model": (folder_paths.get_filename_list("npnet"),),
                 "device": (["cuda", "cpu"],),
-            }
+            },
+            "optional": {
+                "reshape": (["resize", "crop"],),
+                "method": (["nearest-exact", "bilinear", "area", "bicubic", "bislerp"],),
+            },
         }
 
     RETURN_TYPES = ("NOISE",)
@@ -225,30 +231,37 @@ class NPNetGoldenNoise:
 
     FUNCTION = "doit"
 
+    def reshape(self, noise, shape):
+        if shape[-1] == noise.shape[-1] and shape[-2] == noise.shape[-2]:
+            return noise
+        crop = "disabled" if self.strategy == "resize" else "center"
+        return common_upscale(noise, shape[-1], shape[-2], self.method, crop)
+
     def generate_noise(self, input_latent):
         self.seed = self.noise.seed
         orig_shape = input_latent["samples"].shape
-        if orig_shape[-2] != 128 or orig_shape[-1] != 128:
-            input_latent = input_latent.copy()
-            print("Latent must be 128x128 for the NPNet model to work; generating square noise and reshaping...")
-            input_latent["samples"] = common_upscale(input_latent["samples"], 128, 128, "nearest-exact", "disabled")
+        input_latent = input_latent.copy()
+        input_latent["samples"] = self.reshape(input_latent["samples"], (128, 128))
         init_noise = self.noise.generate_noise(input_latent).to(self.npnet.device)
         cond = self.cond[0].clone().to(self.npnet.device)
         if cond.shape[1] != 77:
-            print("NPNet can't handle conds >77 tokens, truncating...")
-            cond = cond[:, :77, :]
-        print("Applying NPNet to noise")
-        r = self.npnet(init_noise, cond).to("cpu")
-        if orig_shape[-2] != 128 or orig_shape[-1] != 128:
-            r = common_upscale(r, orig_shape[-1], orig_shape[-2], "nearest-exact", "disabled")
-        return r
+            print("NPNet can't handle conds >77 tokens, running the model individually on each piece")
 
-    def doit(self, noise, prompt, model, device):
+        r = init_noise
+        for i, cond in enumerate(torch.split(cond, 77, 1)):
+            print("Applying NPNet to chunk", i + 1)
+            r = self.npnet(r, cond)
+
+        return self.reshape(r.to("cpu"), orig_shape)
+
+    def doit(self, noise, prompt, model, device, reshape="resize", method="nearest-exact"):
         model_path = folder_paths.get_full_path("npnet", model)
         if self.npnet is None or self.npnet.pretrained_path != model_path:
             print("Loading NPNet from", model_path)
             self.npnet = NPNet(model_path, device=device)
         self.npnet.to(device)
+        self.method = method
+        self.strategy = reshape
         self.noise = noise
         self.cond = prompt[0]
 

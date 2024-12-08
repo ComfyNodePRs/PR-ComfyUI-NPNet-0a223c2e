@@ -12,10 +12,10 @@ The original pickle-format checkpoints are found at https://drive.google.com/dri
 ## Usage
 Use with custom sampling and pass in an initial noise from eg. `RandomNoise` and a cond (only the first prompt in the conditioning will be used if multiple exist).
 
-You can also run it on the CPU, though appears to change the output for some reason.
+You can also run it on the CPU, though that appears to change the output for some reason.
 
 ## Notes
-The model works with 128x128 latents, apparently. If you pass in other shaped latents, it will reshape the noise into a square before running the noise model, and then reshape the result back to the original resolution.
+The model works with 128x128 latents, apparently. If you pass in other shaped latents, it will reshape the noise into a square before running the noise model, and then reshape the result back to the original resolution. You can control how the reshape happens with the `reshape` and `method` parameters.
 
 If you get an error from the timm module when running this, update your timm package. It may be too old.
 
