@@ -1,0 +1,665 @@
+{
+  "last_node_id": 20,
+  "last_link_id": 33,
+  "nodes": [
+    {
+      "id": 4,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        60,
+        195
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            18,
+            26
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            3,
+            5
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            8
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "XL/sdxl_v10vaefix.safetensors"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [
+        885,
+        330
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        415,
+        186
+      ],
+      "size": [
+        422.84503173828125,
+        164.31304931640625
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            16,
+            32
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "beautiful scenery nature glass bottle landscape, purple galaxy bottle,"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        413,
+        389
+      ],
+      "size": [
+        425.27801513671875,
+        180.6060791015625
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "text, watermark"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "VAEDecode",
+      "pos": [
+        1230,
+        -30
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 24
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            25
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 11,
+      "type": "RandomNoise",
+      "pos": [
+        135,
+        -210
+      ],
+      "size": [
+        315,
+        82
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            31
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RandomNoise"
+      },
+      "widgets_values": [
+        0,
+        "fixed"
+      ]
+    },
+    {
+      "id": 13,
+      "type": "SamplerCustomAdvanced",
+      "pos": [
+        915,
+        -45
+      ],
+      "size": [
+        236.8000030517578,
+        326
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "noise",
+          "type": "NOISE",
+          "link": 33
+        },
+        {
+          "name": "guider",
+          "type": "GUIDER",
+          "link": 19
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 23
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 21
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 22
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            24
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "denoised_output",
+          "type": "LATENT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SamplerCustomAdvanced"
+      }
+    },
+    {
+      "id": 14,
+      "type": "CFGGuider",
+      "pos": [
+        885,
+        495
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 18
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 16
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GUIDER",
+          "type": "GUIDER",
+          "links": [
+            19
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CFGGuider"
+      },
+      "widgets_values": [
+        8
+      ]
+    },
+    {
+      "id": 15,
+      "type": "KSamplerSelect",
+      "pos": [
+        825,
+        -195
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            23
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ]
+    },
+    {
+      "id": 16,
+      "type": "BasicScheduler",
+      "pos": [
+        480,
+        -210
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 26
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            21
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BasicScheduler"
+      },
+      "widgets_values": [
+        "normal",
+        20,
+        1
+      ]
+    },
+    {
+      "id": 17,
+      "type": "PreviewImage",
+      "pos": [
+        1470,
+        -30
+      ],
+      "size": [
+        330,
+        375
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 25
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 18,
+      "type": "Note",
+      "pos": [
+        135,
+        -60
+      ],
+      "size": [
+        315,
+        150
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "You need to have the npnet models installed in models/npnet/ for the model to be selectable"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 20,
+      "type": "NPNetGoldenNoise",
+      "pos": [
+        480,
+        -45
+      ],
+      "size": [
+        315,
+        174
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "noise",
+          "type": "NOISE",
+          "link": 31
+        },
+        {
+          "name": "prompt",
+          "type": "CONDITIONING",
+          "link": 32
+        }
+      ],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            33
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NPNetGoldenNoise"
+      },
+      "widgets_values": [
+        "npnet-sdxl.safetensors",
+        "cuda",
+        "resize",
+        "nearest-exact",
+        "truncate"
+      ]
+    }
+  ],
+  "links": [
+    [
+      3,
+      4,
+      1,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      5,
+      4,
+      1,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      8,
+      4,
+      2,
+      8,
+      1,
+      "VAE"
+    ],
+    [
+      16,
+      6,
+      0,
+      14,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      17,
+      7,
+      0,
+      14,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      18,
+      4,
+      0,
+      14,
+      0,
+      "MODEL"
+    ],
+    [
+      19,
+      14,
+      0,
+      13,
+      1,
+      "GUIDER"
+    ],
+    [
+      21,
+      16,
+      0,
+      13,
+      3,
+      "SIGMAS"
+    ],
+    [
+      22,
+      5,
+      0,
+      13,
+      4,
+      "LATENT"
+    ],
+    [
+      23,
+      15,
+      0,
+      13,
+      2,
+      "SAMPLER"
+    ],
+    [
+      24,
+      13,
+      0,
+      8,
+      0,
+      "LATENT"
+    ],
+    [
+      25,
+      8,
+      0,
+      17,
+      0,
+      "IMAGE"
+    ],
+    [
+      26,
+      4,
+      0,
+      16,
+      0,
+      "MODEL"
+    ],
+    [
+      31,
+      11,
+      0,
+      20,
+      0,
+      "NOISE"
+    ],
+    [
+      32,
+      6,
+      0,
+      20,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      33,
+      20,
+      0,
+      13,
+      0,
+      "NOISE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9229599817706623,
+      "offset": [
+        249.41173457307823,
+        409.79156200044184
+      ]
+    },
+    "ue_links": [],
+    "controller_panel": {
+      "controllers": {},
+      "hidden": true,
+      "highlight": true,
+      "version": 2,
+      "default_order": []
+    },
+    "groupNodes": {}
+  },
+  "version": 0.4
+}

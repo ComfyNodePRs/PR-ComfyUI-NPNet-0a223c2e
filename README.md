@@ -10,7 +10,7 @@ You can find safetensors-converted weights at https://huggingface.co/asagi4/NPNe
 The original pickle-format checkpoints are found at https://drive.google.com/drive/folders/1Z0wg4HADhpgrztyT3eWijPbJJN5Y2jQt?usp=drive_link
 
 ## Usage
-Use with custom sampling and pass in an initial noise from eg. `RandomNoise` and a cond (only the first prompt in the conditioning will be used if multiple exist).
+Use with custom sampling and pass in an initial noise from eg. `RandomNoise` and a prompt as a conditioning. See tooltips on the node for an explanation for the options.
 
 You can also run it on the CPU, though that appears to change the output for some reason.
 
